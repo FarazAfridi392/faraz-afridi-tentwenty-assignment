@@ -3,13 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tentwenty_assignment/core/utils/colors.dart';
 import 'package:tentwenty_assignment/presentation/providers/seat_selection_provider.dart';
 import 'package:tentwenty_assignment/presentation/screens/seat_selection/widgets/legend.dart';
+import 'package:tentwenty_assignment/presentation/screens/seat_selection/widgets/screen_arc_painter.dart';
 
 class SeatSelectionScreen extends ConsumerWidget {
-  String title;
-  SeatSelectionScreen({super.key, required this.title});
+  final String title;
+  const SeatSelectionScreen({super.key, required this.title});
 
-  static const int seatsPerRow = 20;
-  static const int aisleAfter = 10;
+  static const int seatsPerRow =
+      24; // Increased to match the dense look in image
+  static const int leftAisle = 4;
+  static const int rightAisle = 20;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -17,123 +20,201 @@ class SeatSelectionScreen extends ConsumerWidget {
     final state = ref.watch(seatSelectionProvider);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: const BackButton(color: Colors.black),
+        centerTitle: true,
         title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title),
             Text(
-              "${state.selectedDate} | ${state.selectedShowtime}",
-              style: const TextStyle(fontSize: 13),
+              title,
+              style: const TextStyle(
+                color: AppColors.darkText,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              "${state.selectedDate}  |  ${state.selectedShowtime} Hall 1",
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.primaryBlue,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
       ),
       body: Column(
         children: [
-          const SizedBox(height: 12),
+          const SizedBox(height: 40),
 
+          /// Cinema Screen Arc
+          Column(
+            children: [
+              CustomPaint(
+                size: const Size(300, 20),
+                painter: ScreenArcPainter(),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                "SCREEN",
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                  letterSpacing: 2,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 40),
+
+          /// Seat Grid (Responsive)
           Expanded(
             child: SingleChildScrollView(
-              child: Column(
-                children: List.generate(10, (rowIndex) {
-                  final row = rowIndex + 1;
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(seatsPerRow, (seatIndex) {
-                        if (seatIndex == aisleAfter) {
-                          return const SizedBox(width: 16);
-                        }
-
-                        final seat = seatIndex + 1;
-                        final key = '${row}_$seat';
-
-                        Color color;
-                        if (state.selectedSeats.containsKey(key)) {
-                          color = Colors.amber;
-                        } else if (notifier.unavailableSeats.contains(key)) {
-                          color = Colors.grey.shade400;
-                        } else if (row == SeatSelectionNotifier.totalRows) {
-                          color = Colors.purple;
-                        } else {
-                          color = AppColors.primaryBlue;
-                        }
-
-                        return GestureDetector(
-                          onTap: () => notifier.toggleSeat(row, seat),
-                          child: Container(
-                            width: 14,
-                            height: 14,
-                            margin: const EdgeInsets.all(3),
-                            decoration: BoxDecoration(
-                              color: color,
-                              borderRadius: BorderRadius.circular(3),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  children: List.generate(10, (rowIndex) {
+                    final row = rowIndex + 1;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            "$row",
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        );
-                      }),
-                    ),
-                  );
-                }),
+                          const SizedBox(width: 10),
+                          ...List.generate(seatsPerRow, (seatIndex) {
+                            // Logic for Aisle Gaps
+                            if (seatIndex == leftAisle ||
+                                seatIndex == rightAisle) {
+                              return const SizedBox(width: 15);
+                            }
+
+                            final seat = seatIndex + 1;
+                            final key = '${row}_$seat';
+
+                            Color color;
+                            if (state.selectedSeats.containsKey(key)) {
+                              color = const Color(0xFFCD9D0F); // Orange/Amber
+                            } else if (notifier.unavailableSeats.contains(
+                              key,
+                            )) {
+                              color = const Color(0xFFE5E5E5); // Light Grey
+                            } else if (row == 10) {
+                              color = const Color(0xFF564CA3); // Purple VIP
+                            } else {
+                              color = AppColors.primaryBlue;
+                            }
+
+                            return GestureDetector(
+                              onTap: () => notifier.toggleSeat(row, seat),
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                margin: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    );
+                  }),
+                ),
               ),
             ),
           ),
 
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+          /// Legend Section (Responsive Wrap)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+            color: const Color(0xFFF6F6FA),
             child: Wrap(
-              spacing: 16,
+              spacing: 30,
+              runSpacing: 15,
               children: const [
-                Legend(color: Colors.amber, text: "Selected"),
-                Legend(color: Colors.grey, text: "Not available"),
-                Legend(color: Colors.purple, text: "VIP (150\$)"),
+                Legend(color: Color(0xFFCD9D0F), text: "Selected"),
+                Legend(color: Color(0xFFE5E5E5), text: "Not available"),
+                Legend(color: Color(0xFF564CA3), text: "VIP (150\$)"),
                 Legend(color: AppColors.primaryBlue, text: "Regular (50\$)"),
               ],
             ),
           ),
 
+          /// Bottom Payment Bar
           Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
-            ),
+            padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                Expanded(
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFEFEF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         "Total Price",
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.darkText,
+                        ),
                       ),
                       Text(
                         "\$ ${notifier.totalPrice()}",
                         style: const TextStyle(
-                          fontSize: 22,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: AppColors.darkText,
                         ),
                       ),
                     ],
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: state.selectedSeats.isEmpty ? null : () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: state.selectedSeats.isEmpty ? null : () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        disabledBackgroundColor: Colors.grey.shade300,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        "Proceed to pay",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
-                  child: const Text("Proceed to pay"),
                 ),
               ],
             ),
